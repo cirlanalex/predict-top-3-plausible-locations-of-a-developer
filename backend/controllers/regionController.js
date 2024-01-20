@@ -10,7 +10,9 @@ const octokit = new Octokit({
 const guessLanguage = require('../lib/guessLanguage');
 const Country = require('../models/country');
 const Language = require('../models/language');
+const Timezone = require('../models/timezone');
 const CountryLanguage = require('../models/countryLanguage');
+const CountryTimezone = require('../models/countryTimezone');
 
 function detectLanguage(content) {
     let language = null;
@@ -175,10 +177,62 @@ async function getCountryByEmail(email) {
     return region;
 }
 
+async function getCountriesByTimezone(timezone) {
+    let countries = [];
+
+    await Timezone.findOne({
+        where: {
+            name: timezone,
+        },
+    }).then(async (timezone) => {
+        if (timezone === null) {
+            return;
+        }
+        await CountryTimezone.findAll({
+            where: {
+                id_timezone: timezone.id,
+            },
+        }).then(async (countryTimezones) => {
+            for (const countryTimezone of countryTimezones) {
+                await Country.findOne({
+                    where: {
+                        id: countryTimezone.id_country,
+                    },
+                }).then((country) => {
+                    if (country === null || countries.includes(country.name)) {
+                        return;
+                    }
+                    countries.push(country.name);
+                });
+            }
+        });
+    });
+
+    return countries;
+}
+
 async function fetchData(url) {
     try {
         const response = await axios.get(url);
         return response.data;
+    } catch (err) {
+        throw err;
+    }
+}
+
+async function getTimezone(username) {
+    const url = `https://github.com/${username}`;
+
+    try {
+        const html = await fetchData(url);
+        const $ = cheerio.load(html);
+
+        const timezone = $('li[itemprop="localTime"] > span > profile-timezone').text().slice(1, -1);
+        if (timezone === '') {
+            return null;
+        }
+
+        return timezone;
     } catch (err) {
         throw err;
     }
@@ -274,17 +328,18 @@ const getRegionByWebsite = async (req, res) => {
 }
 
 const getRegionByTimezone = async (req, res) => {
-    const url = `https://github.com/${req.params.username}`;
-
     try {
-        const html = await fetchData(url);
-        const $ = cheerio.load(html);
+        const username = req.params.username;
 
-        const timezone = $('li[itemprop="localTime"] > span > profile-timezone').text();
-        if (timezone === '') {
+        const timezone = await getTimezone(username);
+
+        const regions = await getCountriesByTimezone(timezone);
+
+        if (regions.length === 0) {
             return res.status(404).send();
         }
-        return res.status(200).json({ Region: timezone });
+
+        return res.status(200).json({ Region: regions });
     } catch (err) {
         return res.status(500).send();
     }
@@ -325,10 +380,20 @@ const getRegionByAll = async (req, res) => {
             }
         }
 
-        const regions = await getRegionByLanguageFromRepos(username);
+        let regions = await getRegionByLanguageFromRepos(username);
 
         if (regions.length > 0) {
             return res.status(200).json({ Regions: regions });
+        }
+
+        const timezone = await getTimezone(username);
+
+        if (timezone !== null) {
+            regions = await getCountriesByTimezone(timezone);
+
+            if (regions.length > 0) {
+                return res.status(200).json({ Regions: regions });
+            }
         }
 
         return res.status(404).send();
