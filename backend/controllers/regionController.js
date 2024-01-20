@@ -1,5 +1,8 @@
 const { Octokit } = require("@octokit/rest");
 
+const axios = require('axios');
+const cheerio = require('cheerio');
+
 const octokit = new Octokit({
     auth: process.env.GITHUB_TOKEN
 });
@@ -47,6 +50,9 @@ async function getRegionsFromLanguages(languages) {
                 code: maxLanguage,
             },
         }).then(async (language) => {
+            if (language === null) {
+                return;
+            }
             await CountryLanguage.findAll({
                 where: {
                     id_language: language.id,
@@ -58,6 +64,9 @@ async function getRegionsFromLanguages(languages) {
                             id: countryLanguage.id_country,
                         },
                     }).then((country) => {
+                        if (country === null || regions.includes(country.name)) {
+                            return;
+                        }
                         regions.push(country.name);
                     });
                 }
@@ -132,10 +141,47 @@ async function getCountryByWebsite(website) {
             website: region,
         },
     }).then(async (country) => {
+        if (country === null) {
+            region = null;
+            return;
+        }
         region = country.name;
     });
 
     return region;
+}
+
+async function getCountryByEmail(email) {
+    const emailParts = email.split('@');
+
+    const domain = emailParts[1];
+
+    const domainParts = domain.split('.');
+
+    let region = domainParts[domainParts.length - 1].toLowerCase();
+
+    await Country.findOne({
+        where: {
+            website: region,
+        },
+    }).then(async (country) => {
+        if (country === null) {
+            region = null;
+            return;
+        }
+        region = country.name;
+    });
+
+    return region;
+}
+
+async function fetchData(url) {
+    try {
+        const response = await axios.get(url);
+        return response.data;
+    } catch (err) {
+        throw err;
+    }
 }
 
 const getRegionByLanguage = async (req, res) => {
@@ -188,24 +234,15 @@ const getRegionByEmail = async (req, res) => {
             return res.status(404).send();
         }
 
-        const emailParts = email.split('@');
+        const region = await getCountryByEmail(email);
 
-        const domain = emailParts[1];
-
-        const domainParts = domain.split('.');
-
-        let region = domainParts[domainParts.length - 1].toLowerCase();
-
-        await Country.findOne({
-            where: {
-                website: region,
-            },
-        }).then(async (country) => {
-            region = country.name;
-        });
+        if (region === null) {
+            return res.status(404).send();
+        }
 
         return res.status(200).json({ Region: region });
     } catch (err) {
+        console.log(err);
         return res.status(500).send();
     }
 }
@@ -226,10 +263,32 @@ const getRegionByWebsite = async (req, res) => {
 
         const region = await getCountryByWebsite(website);
 
+        if (region === null) {
+            return res.status(404).send();
+        }
+
         return res.status(200).json({ Region: region });
     } catch (err) {
         return res.status(500).send();
     }
+}
+
+const getRegionByTimezone = async (req, res) => {
+    const url = `https://github.com/${req.params.username}`;
+
+    try {
+        const html = await fetchData(url);
+        const $ = cheerio.load(html);
+
+        const timezone = $('li[itemprop="localTime"] > span > profile-timezone').text();
+        if (timezone === '') {
+            return res.status(404).send();
+        }
+        return res.status(200).json({ Region: timezone });
+    } catch (err) {
+        return res.status(500).send();
+    }
+
 }
 
 const getRegionByAll = async (req, res) => {
@@ -244,6 +303,16 @@ const getRegionByAll = async (req, res) => {
 
         if (location !== null) {
             return res.status(200).json({ Region: location });
+        }
+
+        const email = user.email;
+
+        if (email !== null) {
+            const region = await getCountryByEmail(email);
+
+            if (region !== null) {
+                return res.status(200).json({ Region: region });
+            }
         }
 
         const website = user.blog;
@@ -268,4 +337,4 @@ const getRegionByAll = async (req, res) => {
     }
 }
 
-module.exports = { getRegionByLanguage, getRegionByLocation, getRegionByEmail, getRegionByWebsite, getRegionByAll };
+module.exports = { getRegionByLanguage, getRegionByLocation, getRegionByEmail, getRegionByWebsite, getRegionByTimezone, getRegionByAll };
