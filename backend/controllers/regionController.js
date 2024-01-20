@@ -20,78 +20,136 @@ function detectLanguage(content) {
     return language;
 }
 
+function getMostUsedLanguage(languages) {
+    let maxCount = 0;
+    let maxLanguages = [];
+    let languageCounts = {};
+    for (const language of languages) {
+        if (languageCounts[language] === undefined) {
+            languageCounts[language] = 0;
+        }
+        languageCounts[language]++;
+        if (languageCounts[language] > maxCount) {
+            maxCount = languageCounts[language];
+            maxLanguages = [language];
+        } else if (languageCounts[language] === maxCount) {
+            maxLanguages.push(language);
+        }
+    }
+    return maxLanguages;
+}
+
+async function getRegionsFromLanguages(languages) {
+    let regions = [];
+    for (const maxLanguage of languages) {
+        await Language.findOne({
+            where: {
+                code: maxLanguage,
+            },
+        }).then(async (language) => {
+            await CountryLanguage.findAll({
+                where: {
+                    id_language: language.id,
+                },
+            }).then(async (countryLanguages) => {
+                for (const countryLanguage of countryLanguages) {
+                    await Country.findOne({
+                        where: {
+                            id: countryLanguage.id_country,
+                        },
+                    }).then((country) => {
+                        regions.push(country.name);
+                    });
+                }
+            });
+        });
+    }
+    return regions;
+}
+
+async function getRegionByLanguageFromRepos(username) {
+    let regions = [];
+
+    const { data: repos } = await octokit.repos.listForUser({
+        username: username,
+        type: 'public',
+    });
+
+    if (repos.length === 0) {
+        return regions;
+    }
+
+    const detectedLanguages = [];
+
+    for (const repo of repos) {
+        try {
+            const readme = await octokit.repos.getReadme({
+                owner: username,
+                repo: repo.name,
+            });
+
+            const readmeContent = Buffer.from(readme.data.content, 'base64').toString();
+
+            if (readmeContent.length < 200) {
+                continue;
+            }
+
+            let detectedLanguage = detectLanguage(readmeContent);
+
+            if (detectedLanguage === null) {
+                continue;
+            }
+
+            detectedLanguages.push(detectedLanguage);
+
+        } catch (err) {
+            if (err.status === 404) {
+                continue;
+            } else {
+                throw err;
+            }
+        }
+    }
+
+    if (detectedLanguages.length > 0) {
+        // Get the most frequent language
+        const maxLanguages = getMostUsedLanguage(detectedLanguages);
+        
+        // Get the regions from the most frequent languages
+        regions = await getRegionsFromLanguages(maxLanguages);
+    }
+
+    return regions;
+}
+
+async function getCountryByWebsite(website) {
+    const websiteParts = website.split('.');
+
+    let region = websiteParts[websiteParts.length - 1].split('/')[0].toLowerCase();
+
+    await Country.findOne({
+        where: {
+            website: region,
+        },
+    }).then(async (country) => {
+        region = country.name;
+    });
+
+    return region;
+}
+
 const getRegionByLanguage = async (req, res) => {
     try {
         const username = req.params.username;
-        
-        const { data: repos } = await octokit.repos.listForUser({
-            username: username,
-            type: 'public',
-        });
 
-        if (repos.length === 0) {
+        const regions = await getRegionByLanguageFromRepos(username);
+
+        if (regions.length === 0) {
             return res.status(404).send();
         }
 
-        const detectedLanguages = [];
-
-        for (const repo of repos) {
-            try {
-                const readme = await octokit.repos.getReadme({
-                    owner: username,
-                    repo: repo.name,
-                });
-
-                const readmeContent = Buffer.from(readme.data.content, 'base64').toString();
-
-                if (readmeContent.length < 200) {
-                    continue;
-                }
-
-                let detectedLanguage = detectLanguage(readmeContent);
-
-                if (detectedLanguage === null) {
-                    continue;
-                }
-
-                await Language.findOne({
-                    where: {
-                        code: detectedLanguage,
-                    },
-                }).then(async (language) => {
-                    detectedLanguage = language.id;
-                });
-
-                await CountryLanguage.findAll({
-                    where: {
-                        id_language: detectedLanguage,
-                    },
-                }).then(async (languages) => {
-                    for (const language of languages) {
-                        await Country.findOne({
-                            where: {
-                                id: language.id_country,
-                            },
-                        }).then(async (country) => {
-                            if (!detectedLanguages.includes(country.name)) {
-                                detectedLanguages.push(country.name);
-                            }
-                        });
-                    }
-                });
-
-            } catch (err) {
-                if (err.status === 404) {
-                    continue;
-                } else {
-                    throw err;
-                }
-            }
-        }
-
-        return res.status(200).json({ Regions: detectedLanguages });
+        return res.status(200).json({ Regions: regions });
     } catch (err) {
-        console.log(err);
         return res.status(500).send();
     }
 }
@@ -112,7 +170,6 @@ const getRegionByLocation = async (req, res) => {
         
         return res.status(200).json({ Region: location });
     } catch (err) {
-        console.log(err);
         return res.status(500).send();
     }
 }
@@ -124,8 +181,6 @@ const getRegionByEmail = async (req, res) => {
         const { data: user } = await octokit.users.getByUsername({
             username: username,
         });
-
-        console.log(user);
 
         const email = user.email;
 
@@ -151,7 +206,6 @@ const getRegionByEmail = async (req, res) => {
 
         return res.status(200).json({ Region: region });
     } catch (err) {
-        console.log(err);
         return res.status(500).send();
     }
 }
@@ -170,23 +224,48 @@ const getRegionByWebsite = async (req, res) => {
             return res.status(404).send();
         }
 
-        const websiteParts = website.split('.');
-
-        let region = websiteParts[websiteParts.length - 1].split('/')[0].toLowerCase();
-
-        await Country.findOne({
-            where: {
-                website: region,
-            },
-        }).then(async (country) => {
-            region = country.name;
-        });
+        const region = await getCountryByWebsite(website);
 
         return res.status(200).json({ Region: region });
     } catch (err) {
-        console.log(err);
         return res.status(500).send();
     }
 }
 
-module.exports = { getRegionByLanguage, getRegionByLocation, getRegionByEmail, getRegionByWebsite };
+const getRegionByAll = async (req, res) => {
+    try {
+        const username = req.params.username;
+
+        const { data: user } = await octokit.users.getByUsername({
+            username: username,
+        });
+
+        const location = user.location;
+
+        if (location !== null) {
+            return res.status(200).json({ Region: location });
+        }
+
+        const website = user.blog;
+
+        if (website !== null) {
+            const region = await getCountryByWebsite(website);
+
+            if (region !== null) {
+                return res.status(200).json({ Region: region });
+            }
+        }
+
+        const regions = await getRegionByLanguageFromRepos(username);
+
+        if (regions.length > 0) {
+            return res.status(200).json({ Regions: regions });
+        }
+
+        return res.status(404).send();
+    } catch (err) {
+        return res.status(500).send();
+    }
+}
+
+module.exports = { getRegionByLanguage, getRegionByLocation, getRegionByEmail, getRegionByWebsite, getRegionByAll };
