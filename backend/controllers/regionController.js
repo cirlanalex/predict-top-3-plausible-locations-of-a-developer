@@ -1,8 +1,13 @@
 const { Octokit } = require("@octokit/rest");
 
-const octokit = new Octokit();
+const octokit = new Octokit({
+    auth: process.env.GITHUB_TOKEN
+});
 
 const guessLanguage = require('../lib/guessLanguage');
+const Country = require('../models/country');
+const Language = require('../models/language');
+const CountryLanguage = require('../models/countryLanguage');
 
 function detectLanguage(content) {
     let language = null;
@@ -43,16 +48,38 @@ const getRegionByLanguage = async (req, res) => {
                     continue;
                 }
 
-                const detectedLanguage = detectLanguage(readmeContent);
+                let detectedLanguage = detectLanguage(readmeContent);
 
                 if (detectedLanguage === null) {
                     continue;
                 }
 
-                // print repo name
-                console.log(repo.name);
+                await Language.findOne({
+                    where: {
+                        code: detectedLanguage,
+                    },
+                }).then(async (language) => {
+                    detectedLanguage = language.id;
+                });
 
-                detectedLanguages.push(detectedLanguage);
+                await CountryLanguage.findAll({
+                    where: {
+                        id_language: detectedLanguage,
+                    },
+                }).then(async (languages) => {
+                    for (const language of languages) {
+                        await Country.findOne({
+                            where: {
+                                id: language.id_country,
+                            },
+                        }).then(async (country) => {
+                            if (!detectedLanguages.includes(country.name)) {
+                                detectedLanguages.push(country.name);
+                            }
+                        });
+                    }
+                });
+
             } catch (err) {
                 if (err.status === 404) {
                     continue;
@@ -62,7 +89,7 @@ const getRegionByLanguage = async (req, res) => {
             }
         }
 
-        return res.status(200).json(detectedLanguages);
+        return res.status(200).json({ Regions: detectedLanguages });
     } catch (err) {
         console.log(err);
         return res.status(500).send();
@@ -112,7 +139,15 @@ const getRegionByEmail = async (req, res) => {
 
         const domainParts = domain.split('.');
 
-        const region = domainParts[domainParts.length - 1];
+        let region = domainParts[domainParts.length - 1].toLowerCase();
+
+        await Country.findOne({
+            where: {
+                website: region,
+            },
+        }).then(async (country) => {
+            region = country.name;
+        });
 
         return res.status(200).json({ Region: region });
     } catch (err) {
@@ -137,7 +172,15 @@ const getRegionByWebsite = async (req, res) => {
 
         const websiteParts = website.split('.');
 
-        const region = websiteParts[websiteParts.length - 1].split('/')[0];
+        let region = websiteParts[websiteParts.length - 1].split('/')[0].toLowerCase();
+
+        await Country.findOne({
+            where: {
+                website: region,
+            },
+        }).then(async (country) => {
+            region = country.name;
+        });
 
         return res.status(200).json({ Region: region });
     } catch (err) {
