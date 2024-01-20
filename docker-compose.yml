@@ -1,0 +1,35 @@
+version: '4.2'
+
+services:
+
+  data:
+    image: mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATABASE_ROOT_PASSWORD:?}
+      MYSQL_DATABASE: ${DATABASE_NAME:?}
+      MYSQL_USER: ${DATABASE_USER:?}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD:?}
+    ports:
+      - ${DATABASE_PORT:-3306}:3306
+    volumes:
+      - ./data/db:/var/lib/mysql
+      - "./data:/docker-entrypoint-initdb.d"
+    restart: always
+
+  backend:
+    image: spp-regions/backend
+    build:
+      context: ./backend
+    depends_on:
+      - data
+    environment:
+      DATABASE_HOST: data
+      DATABASE_NAME: ${DATABASE_NAME:?}
+      DATABASE_USER: ${DATABASE_USER:?}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?}
+      DATABASE_PORT: ${DATABASE_PORT:-3306}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:?}
+      PORT: ${BACKEND_PORT:?}
+      HOST: ${BACKEND_HOST:?}
+    ports:
+      - ${BACKEND_PORT:?}:80
