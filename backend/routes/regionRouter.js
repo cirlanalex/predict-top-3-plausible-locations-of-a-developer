@@ -23,4 +23,14 @@ router.route('/:username/getRegionByWebsite')
         regionController.getRegionByWebsite(req, res);
     });
 
+router.route('/:username/getRegionByTimezone')
+    .get((req, res) => {
+        regionController.getRegionByTimezone(req, res);
+    });
+
+router.route('/:username/getRegionByAll')
+    .get((req, res) => {
+        regionController.getRegionByAll(req, res);
+    });
+
 module.exports = router;

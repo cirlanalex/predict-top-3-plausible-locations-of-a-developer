@@ -1,7 +1,7 @@
 -- --------------------------------------------------------
 -- Host:                         127.0.0.1
--- Server version:               11.2.2-MariaDB - mariadb.org binary distribution
--- Server OS:                    Win64
+-- Server version:               11.2.2-MariaDB-1:11.2.2+maria~ubu2204 - mariadb.org binary distribution
+-- Server OS:                    debian-linux-gnu
 -- HeidiSQL Version:             12.6.0.6765
 -- --------------------------------------------------------
 
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `countries_languages` (
   CONSTRAINT `FK_languages` FOREIGN KEY (`id_language`) REFERENCES `languages` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
--- Dumping data for table regions.countries_languages: ~222 rows (approximately)
+-- Dumping data for table regions.countries_languages: ~224 rows (approximately)
 INSERT INTO `countries_languages` (`id_language`, `id_country`) VALUES
 	(2, 123),
 	(2, 164),
@@ -70,6 +70,7 @@ INSERT INTO `countries_languages` (`id_language`, `id_country`) VALUES
 	(15, 102),
 	(15, 104),
 	(15, 171),
+	(16, 45),
 	(16, 68),
 	(19, 7),
 	(19, 21),
@@ -231,6 +232,7 @@ INSERT INTO `countries_languages` (`id_language`, `id_country`) VALUES
 	(88, 23),
 	(88, 164),
 	(88, 197),
+	(89, 45),
 	(89, 181),
 	(90, 164),
 	(91, 67),
