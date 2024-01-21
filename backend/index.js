@@ -18,6 +18,9 @@ app.listen(PORT_OPEN, HOST_OPEN, () => {
     console.log(`Backend server listening on http://${HOST_TO_SHOW}:${PORT}`);
     console.log('Some endpoints to try:');
     console.log(`http://${HOST_TO_SHOW}:${PORT}/region/cirlanalex/getRegionByWebsite`);
+    console.log(`http://${HOST_TO_SHOW}:${PORT}/region/cirlanalex/getRegionByEmail`);
     console.log(`http://${HOST_TO_SHOW}:${PORT}/region/cirlanalex/getRegionByLocation`);
     console.log(`http://${HOST_TO_SHOW}:${PORT}/region/ViorelMocanu/getRegionByLanguage`);
+    console.log(`http://${HOST_TO_SHOW}:${PORT}/region/cirlanalex/getRegionByTimezone`);
+    console.log(`http://${HOST_TO_SHOW}:${PORT}/region/cirlanalex/getRegionByAll`);
 });
