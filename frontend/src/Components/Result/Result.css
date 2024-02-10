@@ -1,0 +1,23 @@
+.results-container {
+    width: 1100px;
+    margin: auto;
+    margin-top: 10px;
+    border-radius: 15px;
+    background-image: linear-gradient(90deg, #bdc3c7, #4d6074);
+}
+
+.results-table {
+    border-collapse: collapse;
+    font-size: 25px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    width: 1100px;
+}
+
+.results-table thead tr {
+    font-weight: bold;
+}
+
+.results-table th, .results-table td {
+    padding: 12px 15px;
+}

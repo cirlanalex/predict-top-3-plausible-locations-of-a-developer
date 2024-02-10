@@ -33,3 +33,14 @@ services:
       HOST: ${BACKEND_HOST:?}
     ports:
       - ${BACKEND_PORT:?}:80
+  
+  frontend:
+    image: spp-regions/frontend
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_API: ${BACKEND:?}
+    depends_on:
+      - backend
+    ports:
+      - ${FRONTEND_PORT:?}:80

@@ -14,6 +14,7 @@ const Timezone = require('../models/timezone');
 const CountryLanguage = require('../models/countryLanguage');
 const CountryTimezone = require('../models/countryTimezone');
 
+// Function to detect the language of a text
 function detectLanguage(content) {
     let language = null;
     guessLanguage.guessLanguage.detect(content, (languageName) => {
@@ -25,6 +26,7 @@ function detectLanguage(content) {
     return language;
 }
 
+// Function to get the most frequent language from an array of languages
 function getMostUsedLanguage(languages) {
     let maxCount = 0;
     let maxLanguages = [];
@@ -44,6 +46,7 @@ function getMostUsedLanguage(languages) {
     return maxLanguages;
 }
 
+// Function to get the regions from an array of languages
 async function getRegionsFromLanguages(languages) {
     let regions = [];
     for (const maxLanguage of languages) {
@@ -78,6 +81,7 @@ async function getRegionsFromLanguages(languages) {
     return regions;
 }
 
+// Function to get the regions from the repositories of a user
 async function getRegionByLanguageFromRepos(username) {
     let regions = [];
 
@@ -133,6 +137,7 @@ async function getRegionByLanguageFromRepos(username) {
     return regions;
 }
 
+// Function to get the region from a website
 async function getCountryByWebsite(website) {
     const websiteParts = website.split('.');
 
@@ -153,6 +158,7 @@ async function getCountryByWebsite(website) {
     return region;
 }
 
+// Function to get the region from an email
 async function getCountryByEmail(email) {
     const emailParts = email.split('@');
 
@@ -177,6 +183,7 @@ async function getCountryByEmail(email) {
     return region;
 }
 
+// Function to get the countries from a timezone
 async function getCountriesByTimezone(timezone) {
     let countries = [];
 
@@ -211,6 +218,7 @@ async function getCountriesByTimezone(timezone) {
     return countries;
 }
 
+// Function to fetch data from an URL
 async function fetchData(url) {
     try {
         const response = await axios.get(url);
@@ -220,6 +228,7 @@ async function fetchData(url) {
     }
 }
 
+// Function to get the timezone of a user
 async function getTimezone(username) {
     const url = `https://github.com/${username}`;
 
@@ -238,6 +247,24 @@ async function getTimezone(username) {
     }
 }
 
+// Function to round a number to a certain number of decimals
+function round(value, decimals) {
+    return Number(Number(Math.round(value + 'e' + decimals) + 'e-' + decimals).toFixed(decimals));
+}
+
+// Function to add a region to the result
+function addRegionToResult(regions, region, percentage, from) {
+    for (const regionObj of regions) {
+        if (regionObj.Region === region) {
+            regionObj.Percentage = round(regionObj.Percentage + percentage, 2);
+            regionObj.From.push(from);
+            return;
+        }
+    }
+    regions.push({ Region: region, Percentage: round(percentage, 2), From: [from] });
+}
+
+// Functions to get the region of a user by language
 const getRegionByLanguage = async (req, res) => {
     try {
         const username = req.params.username;
@@ -245,15 +272,19 @@ const getRegionByLanguage = async (req, res) => {
         const regions = await getRegionByLanguageFromRepos(username);
 
         if (regions.length === 0) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         return res.status(200).json({ Regions: regions });
     } catch (err) {
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 }
 
+// Function to get the region of a user by location
 const getRegionByLocation = async (req, res) => {
     try {
         const username = req.params.username;
@@ -265,15 +296,19 @@ const getRegionByLocation = async (req, res) => {
         const location = user.location;
 
         if (location === null) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
         
         return res.status(200).json({ Region: location });
     } catch (err) {
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 }
 
+// Function to get the region of a user by email
 const getRegionByEmail = async (req, res) => {
     try {
         const username = req.params.username;
@@ -285,22 +320,25 @@ const getRegionByEmail = async (req, res) => {
         const email = user.email;
 
         if (email === null) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         const region = await getCountryByEmail(email);
 
         if (region === null) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         return res.status(200).json({ Region: region });
     } catch (err) {
-        console.log(err);
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 }
 
+// Function to get the region of a user by website
 const getRegionByWebsite = async (req, res) => {
     try {
         const username = req.params.username;
@@ -312,21 +350,25 @@ const getRegionByWebsite = async (req, res) => {
         const website = user.blog;
 
         if (website === null) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         const region = await getCountryByWebsite(website);
 
         if (region === null) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         return res.status(200).json({ Region: region });
     } catch (err) {
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 }
 
+// Function to get the region of a user by timezone
 const getRegionByTimezone = async (req, res) => {
     try {
         const username = req.params.username;
@@ -336,16 +378,20 @@ const getRegionByTimezone = async (req, res) => {
         const regions = await getCountriesByTimezone(timezone);
 
         if (regions.length === 0) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         return res.status(200).json({ Region: regions });
     } catch (err) {
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 
 }
 
+// Function to get the region of a user by all the available methods
 const getRegionByAll = async (req, res) => {
     try {
         const username = req.params.username;
@@ -354,10 +400,17 @@ const getRegionByAll = async (req, res) => {
             username: username,
         });
 
+        // Variables to store the regions found by each method
+        let foundLocation = null;
+        let foundEmail = null;
+        let foundWebsite = null;
+        let foundLanguage = null;
+        let foundTimezone = null;
+
         const location = user.location;
 
         if (location !== null) {
-            return res.status(200).json({ Region: location });
+            foundLocation = location;
         }
 
         const email = user.email;
@@ -366,7 +419,7 @@ const getRegionByAll = async (req, res) => {
             const region = await getCountryByEmail(email);
 
             if (region !== null) {
-                return res.status(200).json({ Region: region });
+                foundEmail = region;
             }
         }
 
@@ -376,14 +429,14 @@ const getRegionByAll = async (req, res) => {
             const region = await getCountryByWebsite(website);
 
             if (region !== null) {
-                return res.status(200).json({ Region: region });
+                foundWebsite = region;
             }
         }
 
         let regions = await getRegionByLanguageFromRepos(username);
 
         if (regions.length > 0) {
-            return res.status(200).json({ Regions: regions });
+            foundLanguage = regions;
         }
 
         const timezone = await getTimezone(username);
@@ -392,12 +445,115 @@ const getRegionByAll = async (req, res) => {
             regions = await getCountriesByTimezone(timezone);
 
             if (regions.length > 0) {
-                return res.status(200).json({ Regions: regions });
+                foundTimezone = regions;
             }
         }
 
-        return res.status(404).send();
+        // Variables to store the percentage of each method
+        let remainPercentage = 100;
+        let locationPercentage = 0;
+        let emailPercentage = 0;
+        let websitePercentage = 0;
+        let languagePercentage = 0;
+        let timezonePercentage = 0;
+
+        if (foundLocation !== null) {
+            if (foundEmail !== null || foundWebsite !== null || foundLanguage !== null || foundTimezone !== null) {
+                // If the location is not the only method that found a region, give it a percentage of 80
+                locationPercentage = 80;
+                remainPercentage -= locationPercentage;
+            } else {
+                // If there is no other method that found a region, give the location the remaining percentage
+                locationPercentage = remainPercentage;
+                remainPercentage -= locationPercentage;
+            }
+        }
+
+        if (foundEmail !== null) {
+            if (foundLanguage !== null || foundTimezone !== null) {
+                // If the email is not the only method that found a region, give it a percentage of 50% from the remaining percentage
+                emailPercentage = remainPercentage / 2;
+                remainPercentage -= emailPercentage;
+            } else {
+                // If the email is the only method that found a region, give it the remaining percentage
+                emailPercentage = remainPercentage;
+                remainPercentage -= emailPercentage;
+            }
+        }
+
+        if (foundWebsite !== null) {
+            if (foundEmail !== null) {
+                // If email was found, split the email percentage with the website
+                emailPercentage = emailPercentage / 2;
+                websitePercentage = emailPercentage;
+            } else if (foundLanguage !== null || foundTimezone !== null) {
+                // If the website is not the only method that found a region, give it a percentage of 50% from the remaining percentage
+                websitePercentage = remainPercentage / 2;
+                remainPercentage -= websitePercentage;
+            } else {
+                // If there is no other method that found a region, give the website the remaining percentage
+                websitePercentage = remainPercentage;
+                remainPercentage -= websitePercentage;
+            }
+        }
+
+        if (foundLanguage !== null) {
+            if (foundTimezone !== null) {
+                // If the language is not the only method that found a region, give it a percentage of 50% from the remaining percentage
+                languagePercentage = remainPercentage / 2;
+                remainPercentage -= languagePercentage;
+            } else {
+                // If there is no other method that found a region, give the language the remaining percentage
+                languagePercentage = remainPercentage;
+                remainPercentage -= languagePercentage;
+            }
+        }
+
+        if (foundTimezone !== null) {
+            // Give the timezone the remaining percentage
+            timezonePercentage = remainPercentage;
+            remainPercentage -= timezonePercentage;
+        }
+
+        if (remainPercentage === 0) {
+            let regions = [];
+
+            if (foundLocation !== null) {
+                addRegionToResult(regions, foundLocation, locationPercentage, 'Location');
+            }
+
+            if (foundEmail !== null) {
+                addRegionToResult(regions, foundEmail, emailPercentage, 'Email');
+            }
+
+            if (foundWebsite !== null) {
+                addRegionToResult(regions, foundWebsite, websitePercentage, 'Website');
+            }
+
+            if (foundLanguage !== null) {
+                let length = foundLanguage.length;
+                for (const region of foundLanguage) {
+                    addRegionToResult(regions, region, languagePercentage / length, 'Language');
+                }
+            }
+
+            if (foundTimezone !== null) {
+                let length = foundTimezone.length;
+                for (const region of foundTimezone) {
+                    addRegionToResult(regions, region, timezonePercentage / length, 'Timezone');
+                }
+            }
+
+            regions.sort((a, b) => b.Percentage - a.Percentage);
+
+            return res.status(200).json({ Regions: regions });
+        }
+
+        return res.status(204).send();
     } catch (err) {
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 }
