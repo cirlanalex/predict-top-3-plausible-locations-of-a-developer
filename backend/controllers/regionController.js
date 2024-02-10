@@ -247,16 +247,21 @@ async function getTimezone(username) {
     }
 }
 
+// Function to round a number to a certain number of decimals
+function round(value, decimals) {
+    return Number(Number(Math.round(value + 'e' + decimals) + 'e-' + decimals).toFixed(decimals));
+}
+
 // Function to add a region to the result
 function addRegionToResult(regions, region, percentage, from) {
     for (const regionObj of regions) {
         if (regionObj.Region === region) {
-            regionObj.Percentage += percentage;
+            regionObj.Percentage = round(regionObj.Percentage + percentage, 2);
             regionObj.From.push(from);
             return;
         }
     }
-    regions.push({ Region: region, Percentage: percentage, From: [from] });
+    regions.push({ Region: region, Percentage: round(percentage, 2), From: [from] });
 }
 
 // Functions to get the region of a user by language
@@ -267,11 +272,14 @@ const getRegionByLanguage = async (req, res) => {
         const regions = await getRegionByLanguageFromRepos(username);
 
         if (regions.length === 0) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         return res.status(200).json({ Regions: regions });
     } catch (err) {
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 }
@@ -288,11 +296,14 @@ const getRegionByLocation = async (req, res) => {
         const location = user.location;
 
         if (location === null) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
         
         return res.status(200).json({ Region: location });
     } catch (err) {
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 }
@@ -309,18 +320,20 @@ const getRegionByEmail = async (req, res) => {
         const email = user.email;
 
         if (email === null) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         const region = await getCountryByEmail(email);
 
         if (region === null) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         return res.status(200).json({ Region: region });
     } catch (err) {
-        console.log(err);
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 }
@@ -337,17 +350,20 @@ const getRegionByWebsite = async (req, res) => {
         const website = user.blog;
 
         if (website === null) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         const region = await getCountryByWebsite(website);
 
         if (region === null) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         return res.status(200).json({ Region: region });
     } catch (err) {
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 }
@@ -362,11 +378,14 @@ const getRegionByTimezone = async (req, res) => {
         const regions = await getCountriesByTimezone(timezone);
 
         if (regions.length === 0) {
-            return res.status(404).send();
+            return res.status(204).send();
         }
 
         return res.status(200).json({ Region: regions });
     } catch (err) {
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 
@@ -496,7 +515,6 @@ const getRegionByAll = async (req, res) => {
             remainPercentage -= timezonePercentage;
         }
 
-        // If the remaining percentage is not 0, return 404 (no region found by all methods)
         if (remainPercentage === 0) {
             let regions = [];
 
@@ -531,8 +549,11 @@ const getRegionByAll = async (req, res) => {
             return res.status(200).json({ Regions: regions });
         }
 
-        return res.status(404).send();
+        return res.status(204).send();
     } catch (err) {
+        if (err.status === 404) {
+            return res.status(404).send();
+        }
         return res.status(500).send();
     }
 }
