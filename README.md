@@ -96,3 +96,10 @@ The project utilizes an environment file ".env.example"(rename to ".env") for co
   - DEFAULT_LOCATION_PERCENTAGE (weightage for location set on the profile - from 0 to 100)
   - DEFAULT_EMAIL_WEBSITE_PORTION (weightage for email and website - from 0.0 to 1.0)
   - DEFAULT_LANGUAGE_PORTION (weightage for language - from 0.0 to 1.0)
+
+## Docker
+The project makes use of Docker to containerize and manage its dependencies, ensuring uniformity and flexibility across various environments.
+
+Commands to run:
+  - docker compose build
+  - docker compose up
