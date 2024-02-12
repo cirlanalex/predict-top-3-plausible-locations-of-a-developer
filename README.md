@@ -40,7 +40,7 @@ The backend of the system is built using ExpressJS and is responsible for fetchi
   - /:username/getRegionByAll (integrates all methods mentioned above to predict user location)
     - return example: {Regions: [{Region: "region1", Percentage: 85, From: ["Location", "Website"]}, {Region: "region2", Percentage: 15, From: ["Email", "Language"]}]}
 
-Focus is placed on the "/:username/getRegionByAll" route as it integrates multiple methods for location prediction.
+Focus is placed on the "/:username/getRegionByAll" route as it integrates multiple methods for location prediction and it is the one route used in the frontend.
 
 ## Frontend
 The frontend of the system is built using React and is responsible for providing a user interface to interact with the location prediction functionality.
