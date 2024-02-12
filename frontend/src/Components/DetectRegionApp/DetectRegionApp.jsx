@@ -82,7 +82,7 @@ const DetectRegionApp = () => {
         <div className="background">
             <div className="container">
                 <div className="header">
-                    <h1>Find where a user from GitHub is from</h1>
+                    <h1>Predict the top 3 plausible locations of a software developer</h1>
                 </div>
                 <div className="search-bar">
                     <input type="text" className="input" placeholder="Username" onChange={e => setUsername(e.target.value)} />
