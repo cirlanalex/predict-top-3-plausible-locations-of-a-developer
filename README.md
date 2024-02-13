@@ -51,8 +51,8 @@ Features:
   - checkbox (allows users to indicate whether they want to see more than the top 3 predicted locations)
   - result table (displays the predicted locations with three columns)
     - region (the geographical region where the user is predicted to be located)
-    - percentage (the probability or confidence level associated with the prediction)
-    - from: (indicates where the region prediction was extracted from)
+    - relevance (the probability or relevance level associated with the prediction)
+    - from (indicates where the region prediction was extracted from):
       - Location
       - Email
       - Website
@@ -62,24 +62,43 @@ Features:
 ## Choices
 Everything can be configured except for the aspect specifically selected, wherein the significance of the email extension matches that of the website's top-level domain. This choice was made because both act as ways to locate based on domain extensions.
 
-## Details
-The backend accepts a GitHub username as input to predict the potential location of the user. The prediction process involves the following steps:
-  1. Check if the user has set their location on the profile. If set:
-      - assign this location as the result with 100% confidence if no other locations are detected from other methods
-      - otherwise, allocate a percentage of confidence (configured via DEFAULT_LOCATION_PERCENTAGE) if additional information is available
-  2. Check if the user's email address is public and extract the country based on the email extension. If available:
-      - add this location as a result with the remaining confidence if no other locations are detected from language or time zone methods
-      - otherwise, allocate a percentage of confidence (configured via DEFAULT_EMAIL_WEBSITE_PORTION) if additional information from language or time zone methods is available
-  3. Check if the user has a personal website set on the profile and take the country from the top-level domain. If available:
-      - add this location as a result with half of the email confidence, but also reduce the confidence of the mail to half if the email method found a location
-      - otherwise, allocate a percentage of confidence (configured via DEFAULT_EMAIL_WEBSITE_PORTION) if additional information from language or time zone methods is available
-      - otherwise, add this location as a result with the remaining confidence if no other locations are detected from language or time zone methods
-  4. Determine the most used language by the user in READMEs, excluding English. If detected:
-      - add the locations that speak that language with the remaining confidence and split it between all the locations if no other locations are detected from the time zone method
-      - otherwise, allocate a percentage of confidence (configured via DEFAULT_LANGUAGE_PORTION) and split it between the countries that speak that language if additional information from the time zone method is available
-  5. Determine the user's time zone (scraped since GitHub API does not provide this). If detected:
-      - add the locations that are in that time zone with the remaining confidence and split it between all the locations
-  6. If no method detects at least one potential location, return a 204 status code.
+## Data interpretation
+The GitHub accounts contain multiple information sources that can be used when accessing a
+user’s plausible location. All the identified sources are integrated into accessing the geographical
+location, which will be further referred to as the location guess.
+
+When only one information source is identified within the account, the location guess is entirely
+based on it. However, when multiple sources are present at the same time, they are not all equally
+important for the estimation of the location. The system logic designed for the interpretation of
+the information sources is as follows:
+  - when one single information source is present, it counts for 100% of the location guess
+  - when more information sources are present
+    - the information sources are checked in the following order:
+      - location field
+      - email and personal website fields
+      - language
+      - time zone
+    - every found information source
+      - has an assigned relevance level expressed as a percentage of the
+remaining location guess
+    - system logic:
+      - the location guess is initially at 100%
+      - the relevance level of each found information source is subtracted from
+the location guess
+      - the last information source encountered represents all the remaining
+location guess percentage
+
+NOTE: the order matters, so even if we see 100% relevance level for time zone field, it will still have the lowest relevance because it is 100% from the remaining of the location guess.
+
+| Data                   | Importance | Relevance level* |
+| ---------------------- | ---------- | ---------------- |
+| Location field         | High       | 80%              |
+| Email field            | Medium     | 50%              |
+| Personal website field | Medium     | 50%              |
+| Language               | Low        | 50%              |
+| Time zone field        | Low        | 100%             |
+
+*the relevance levels have been arbitrarily chosen and can be changed within the .env file of the project
 
 ## Environmental variables
 The project utilizes an environment file ".env.example"(rename to ".env") for configuration. The following variables are included:
@@ -93,9 +112,9 @@ The project utilizes an environment file ".env.example"(rename to ".env") for co
   - FRONTEND_PORT (port for the frontend)
   - BACKEND (link to the backend API)
   - GITHUB_TOKEN (GitHub Token for API access)
-  - DEFAULT_LOCATION_PERCENTAGE (weightage for location set on the profile - from 0 to 100)
-  - DEFAULT_EMAIL_WEBSITE_PORTION (weightage for email and website - from 0.0 to 1.0)
-  - DEFAULT_LANGUAGE_PORTION (weightage for language - from 0.0 to 1.0)
+  - DEFAULT_LOCATION_PERCENTAGE (relevance for location set on the profile - from 0 to 100)
+  - DEFAULT_EMAIL_WEBSITE_PORTION (relevance for email and website - from 0 to 100)
+  - DEFAULT_LANGUAGE_PORTION (relevance for language - from 0 to 100)
 
 ## Docker
 The project makes use of Docker to containerize and manage its dependencies, ensuring uniformity and flexibility across various environments.
