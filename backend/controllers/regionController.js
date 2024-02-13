@@ -476,7 +476,7 @@ const getRegionByAll = async (req, res) => {
         if (foundEmail !== null) {
             if (foundLanguage !== null || foundTimezone !== null) {
                 // If the email is not the only method that found a region, give it a percentage of set value from environment variables (default 50% of the remaining percentage)
-                emailPercentage = remainPercentage * defaultEmailWebsitePortion;
+                emailPercentage = remainPercentage * defaultEmailWebsitePortion / 100;
                 remainPercentage -= emailPercentage;
             } else {
                 // If the email is the only method that found a region, give it the remaining percentage
@@ -492,7 +492,7 @@ const getRegionByAll = async (req, res) => {
                 websitePercentage = emailPercentage;
             } else if (foundLanguage !== null || foundTimezone !== null) {
                 // If the website is not the only method that found a region, give it a percentage of set value from environment variables (default 50% of the remaining percentage)
-                websitePercentage = remainPercentage * defaultEmailWebsitePortion;
+                websitePercentage = remainPercentage * defaultEmailWebsitePortion / 100;
                 remainPercentage -= websitePercentage;
             } else {
                 // If there is no other method that found a region, give the website the remaining percentage
@@ -504,7 +504,7 @@ const getRegionByAll = async (req, res) => {
         if (foundLanguage !== null) {
             if (foundTimezone !== null) {
                 // If the language is not the only method that found a region, give it a percentage of set value from environment variables (default 50% of the remaining percentage)
-                languagePercentage = remainPercentage * defaultLanguagePortion;
+                languagePercentage = remainPercentage * defaultLanguagePortion / 100;
                 remainPercentage -= languagePercentage;
             } else {
                 // If there is no other method that found a region, give the language the remaining percentage

@@ -11,7 +11,7 @@ const Result = (props) => {
                 <thead>
                     <tr>
                         <th>Region</th>
-                        <th>Percentage</th>
+                        <th>Relevance</th>
                         <th>From</th>
                     </tr>
                 </thead>
